@@ -261,6 +261,17 @@ TAGS = {
     42016: "ImageUniqueID",
 
     34853: "GPSInfo",
+    (34853, 0): "GPSVersionID",
+    (34853, 1): "GPSLatitudeRef",
+    (34853, 2): "GPSLatitude",
+    (34853, 3): "GPSLongitudeRef",
+    (34853, 4): "GPSLongitude",
+    (34853, 5): "GPSAltitudeRef",
+    (34853, 6): "GPSAltitude",
+    (34853, 7): "GPSTimeStamp",
+    (34853, 8): "GPSSatellites",
+    (34853, 18): "GPSMapDatum",
+    (34853, 29): "GPSDateStamp",
 
     # various extensions (should check specs for "official" names)
     33723: "IptcNaaInfo",
@@ -418,15 +429,24 @@ class DataWriter:
 
 class Tag:
    def __init__(self, code=0, type=0, data=0, offset=None):
-      self.code = code
-      self.type = type
-      self.data = data
+      self.code   = code
+      self.type   = type
+      self.data   = data
       self.offset = offset
+      self.parent = None
       
    def toString(self):
+      tagname = ''
+      if self.parent:
+         if TAGS.has_key((self.parent.code, self.code)):
+            tagname = TAGS[(self.parent.code, self.code)]
+      
+      if not tagname and TAGS.has_key(self.code):
+         tagname = TAGS[self.code]
+        
       return "tag: %d (%s), type: %d (%s), count: %d" % (
               self.code
-            , TAGS[self.code] if (TAGS.has_key(self.code)) else "unknown"
+            , tagname if tagname else "unknown"
             , self.type
             , TYPES[self.type][1]
             , len(self.data)
@@ -435,7 +455,8 @@ class Tag:
 
 
 class ImageFileDirectory:
-   def __init__(self):
+   def __init__(self, parentTag=None):
+      self.parentTag = parentTag
       self.tags = []
       self.tags_by_code = {}
       self.ifds = None
@@ -485,16 +506,20 @@ class ImageFileDirectory:
             # read all sub ifds
             oldOffset = fp.tell()
             ifds = []
+            tag = Tag(tagCode, typ, ifds)
             for offset in data:
                fp.seek( offset )
-               subIfd = ImageFileDirectory()
+               subIfd = ImageFileDirectory(tag)
                subIfd.load(fp, em, level+1)
                ifds.append( subIfd )
             fp.seek(oldOffset)
-            tag = Tag(tagCode, typ, ifds)
    
          else:
             tag = Tag(tagCode, typ, data)
+
+         
+         if self.parentTag:
+            tag.parent = self.parentTag
 
          self.tags.append( tag )
          self.tags_by_code[ tagCode ] = tag
