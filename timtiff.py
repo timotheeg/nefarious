@@ -417,20 +417,28 @@ class DataWriter:
 
 
 class Tag:
-   def __init__(self, code=0, typ=0, data=0, offset=None):
+   def __init__(self, code=0, type=0, data=0, offset=None):
       self.code = code
-      self.typ = typ
+      self.type = type
       self.data = data
       self.offset = offset
+      
+   def toString(self):
+      return "tag: %d (%s), type: %d (%s), count: %d" % (
+              self.code
+            , TAGS[self.code] if (TAGS.has_key(self.code)) else "unknown"
+            , self.type
+            , TYPES[self.type][1]
+            , len(self.data)
+         )
+
 
 
 class ImageFileDirectory:
    def __init__(self):
       self.tags = []
       self.tags_by_code = {}
-      self.ifds = []
-      self.exif = None
-      self.gps = None
+      self.ifds = None
 
       self.imageType = None
       self.imageData = None
@@ -447,14 +455,12 @@ class ImageFileDirectory:
       
       # read tag count
       tagcount = i16( fp.read(2) )
-      print "  "*level, "tag count: %d" % (tagcount)
       
       # read all tags
       for i in range(tagcount):
          
          tag = fp.read( 12 )
          tagCode, typ, count, rawdata = i16(tag), i16(tag, 2), i32(tag, 4), tag[8:]
-         print "  "*level, "tag: %d (%s), type: %d, count: %d" % (tagCode, TAGS[tagCode] if (TAGS.has_key(tagCode)) else "unknown", typ, count),
 
          unitSize, typeName = TYPES[typ]
          size = count * unitSize
@@ -475,47 +481,17 @@ class ImageFileDirectory:
          else:
             data = rawdata
 
-         if typ == TYPE_ASCII or typ == TYPE_RATIONAL or typ == TYPE_SHORT:
-            print ": ",
-            print data if count > 1 else data[0]
-         else:
-            print ""
-
-         if tagCode == TAG_SUBIFD:
+         if tagCode in [TAG_SUBIFD, TAG_EXIFIFD, TAG_GPS_INFO]:
             # read all sub ifds
-            curOffset = fp.tell()
-            idx = 0
+            oldOffset = fp.tell()
+            ifds = []
             for offset in data:
-               print "  "*level, "subIFD #%d (offset %x)" % (idx, offset)
+               fp.seek( offset )
                subIfd = ImageFileDirectory()
-               fp.seek( offset )
-               subIfd.load(fp, em, level+1) # level + 1 for indentation in debug mode
-               self.ifds.append( subIfd )
-               idx += 1
-            fp.seek(curOffset)
-            tag = Tag(tagCode, typ)
-   
-         elif tagCode == TAG_EXIFIFD:
-            # read all sub ifds
-            curOffset = fp.tell()
-            for offset in data:
-               print "  "*level, "Exif tags (offset %x)" % (offset)
-               self.exif = ImageFileDirectory()
-               fp.seek( offset )
-               self.exif.load(fp, em, level+1) # level + 1 for indentation in debug mode
-            fp.seek(curOffset)
-            tag = Tag(tagCode, typ)
-   
-         elif tagCode == TAG_GPS_INFO:
-            # read all sub ifds
-            curOffset = fp.tell()
-            for offset in data:
-               print "  "*level, "GPS data (offset %x)" % (offset)
-               self.gps = ImageFileDirectory()
-               fp.seek( offset )
-               self.gps.load(fp, em, level+1) # level + 1 for indentation in debug mode
-            fp.seek(curOffset)
-            tag = Tag(tagCode, typ)
+               subIfd.load(fp, em, level+1)
+               ifds.append( subIfd )
+            fp.seek(oldOffset)
+            tag = Tag(tagCode, typ, ifds)
    
          else:
             tag = Tag(tagCode, typ, data)
@@ -526,6 +502,9 @@ class ImageFileDirectory:
       # all tags have been read, next long is the next ifd offset that will be read used by the CALLER
       # hence, save current offset before fetching image data
       oldOffset = fp.tell()
+      
+      if self.tags_by_code.has_key( TAG_SUBIFD ):
+         self.ifds = self.tags_by_code[ TAG_SUBIFD ].data
       
       if self.tags_by_code.has_key( TAG_JPEG_INTERCHANGE_FORMAT ) and self.tags_by_code.has_key( TAG_JPEG_INTERCHANGE_FORMAT_LENGTH ):
          # jpeg images are stored as one blob!
@@ -547,15 +526,49 @@ class ImageFileDirectory:
       #image data has been read, now return to correct offset before passing the hand back to caller...
       fp.seek( oldOffset )
 
+
    def save(self, fp, em):
-      #order tags
+      keys = self.tags_by_code.keys()
+      keys.sorted()
+      for k in keys:
+         pass
       #first pass, save all data that needs to be offseted...
       #secondpass, save directory itself
       #success!
-      pass
 
+   def toString(self, level=0):
 
-
+      identation = '' if level <= 0 else '  '*level
+      
+      s = '';
+      
+      s += '%sTAG COUNT: %d\n' % (identation, len(self.tags_by_code))
+      
+      if (self.imageType):
+         s += '%sIMAGE TYPE: %s\n' % (identation, self.imageType)
+         
+      for k in sorted(self.tags_by_code.keys()):
+         tag = self.tags_by_code[k]
+         s += '%s%s' % (identation, tag.toString())
+         
+         if tag.code == TAG_SUBIFD:
+            s += '\n'
+            for idx in range(len(tag.data)):
+               ifd = tag.data[idx]
+               s += '%s+ SUBIFDs #%d:\n' % (identation, idx)
+               s += ifd.toString(level+1)
+               
+         elif tag.code in [TAG_EXIFIFD, TAG_GPS_INFO]:
+            s += '\n%s' % (tag.data[0].toString(level+1))
+         
+         elif tag.type in [TYPE_ASCII, TYPE_RATIONAL, TYPE_SHORT, TYPE_LONG]:
+            s += ": %s\n" % (str(tag.data) if len(tag.data) > 1 else str(tag.data[0]))
+            
+         else:
+            s += '\n'
+         
+      return s;
+         
 
 class TiffImage:
 
@@ -587,8 +600,6 @@ class TiffImage:
          
          if offset == 0:
             break
-         
-         print "IFD #%d (offset %x)" % (idx, offset)
 
          fp.seek( offset )
          ifd = ImageFileDirectory();
@@ -610,11 +621,19 @@ class TiffImage:
       # iniate write of ifd0
       fp.close
       
-
+   def toString(self):
+      s = ''
+      for idx in range(len(self.frames)):
+         ifd = self.frames[idx]
+         s += 'IFD #%d\n' % idx
+         s += ifd.toString()
+      return s
 
 if __name__ == "__main__":
    tiff = TiffImage()
-   tiff.load(sys.argv[1]);
+   tiff.load(sys.argv[1])
+   
+   print tiff.toString()
 
    # assume this is a nef file...
    fp = open("%s.thumb.jpg" % sys.argv[1], 'w')
