@@ -346,6 +346,9 @@ class EndianMachine:
    def ob32(self, i):
       return chr(i>>24&255) + chr(i>>16&255) + chr(i>>8&255) + chr(i&255)
 
+   def isOrder(self, mode):
+      return self.mode == mode
+
    def __init__(self, mode=sys.byteorder):
       self.mode = mode
       
@@ -358,11 +361,20 @@ class EndianMachine:
 
 
 class DataParser:
+   def __init__(self, em):
+      self.em = em;
+      
+   def load_c_type(self, type_char, data):
+      a = array.array(type_char, data)
+      if not self.em.isOrder(sys.byteorder):
+         a.byteswap()
+      return list(a)
+
    def load_byte(self, data):
-      l = []
-      for i in range(len(data)):
-         l.append(ord(data[i]))
-      return tuple(l)
+      return self.load_c_type("B", data)
+
+   def load_sbyte(self, data):
+      return self.load_c_type("b", data)
 
    def load_string(self, data):
       if data[-1:] == '\0':
@@ -370,61 +382,116 @@ class DataParser:
       return data
 
    def load_short(self, data):
-      l = []
-      for i in range(0, len(data), 2):
-         l.append(self.em.i16(data, i))
-      return tuple(l)
+      return self.load_c_type("H", data)
+
+   def load_sshort(self, data):
+      return self.load_c_type("h", data)
 
    def load_long(self, data):
-      l = []
-      for i in range(0, len(data), 4):
-         l.append(self.em.i32(data, i))
-      return tuple(l)
+      return self.load_c_type("I", data)
 
-   def load_rational(self, data):
+   def load_slong(self, data):
+      return self.load_c_type("i", data)
+
+   def load_rational(self, data, type_char="I"):
+      a = self.load_c_type(type_char, data)
       l = []
-      for i in range(0, len(data), 8):
-         l.append((self.em.i32(data, i), self.em.i32(data, i+4)))
-      return tuple(l)
+      for i in range(0, len(a), 2):
+         l.append([a[i], a[i+1]])
+      return l
+
+   def load_srational(self, data):
+      return self.load_rational(data, "i")
 
    def load_float(self, data):
-      a = array.array("f", data)
-      if self.prefix != native_prefix:
-         a.byteswap()
-      return tuple(a)
+      return self.load_c_type("f", data)
 
    def load_double(self, data):
-      a = array.array("d", data)
-      if self.prefix != native_prefix:
-         a.byteswap()
-      return tuple(a)
+      return self.load_c_type("d", data)
 
    def load_undefined(self, data):
       # Untyped data
       return data
-
-   def __init__(self, em):
-      self.em = em;
 
 setattr(DataParser, "%d" % (TYPE_BYTE, ),      DataParser.load_byte)
 setattr(DataParser, "%d" % (TYPE_ASCII, ),     DataParser.load_string)
 setattr(DataParser, "%d" % (TYPE_SHORT, ),     DataParser.load_short)
 setattr(DataParser, "%d" % (TYPE_LONG, ),      DataParser.load_long)
 setattr(DataParser, "%d" % (TYPE_RATIONAL, ),  DataParser.load_rational)
-setattr(DataParser, "%d" % (TYPE_SBYTE, ),     DataParser.load_byte)
+setattr(DataParser, "%d" % (TYPE_SBYTE, ),     DataParser.load_sbyte)
 setattr(DataParser, "%d" % (TYPE_UNDEFINED, ), DataParser.load_undefined)
-setattr(DataParser, "%d" % (TYPE_SSHORT, ),    DataParser.load_short)
-setattr(DataParser, "%d" % (TYPE_SLONG, ),     DataParser.load_long)
-setattr(DataParser, "%d" % (TYPE_SRATIONAL, ), DataParser.load_rational)
+setattr(DataParser, "%d" % (TYPE_SSHORT, ),    DataParser.load_sshort)
+setattr(DataParser, "%d" % (TYPE_SLONG, ),     DataParser.load_slong)
+setattr(DataParser, "%d" % (TYPE_SRATIONAL, ), DataParser.load_srational)
 setattr(DataParser, "%d" % (TYPE_FLOAT, ),     DataParser.load_float)
 setattr(DataParser, "%d" % (TYPE_DOUBLE, ),    DataParser.load_double)
 
 class DataWriter:
-   def __init_(self, em):
+   def __init__(self, em):
       self.em = em
       
-   #TODO: implementation
+   def get_c_type(self, type_char, data):
+      a = array.array(type_char, data)
+      if not self.em.isOrder(sys.byteorder):
+         a.byteswap()
+      return a.tostring()
+      
+   def get_byte(self, data):
+      return self.get_c_type('B', data)
 
+   def get_sbyte(self, data):
+      return self.get_c_type('b', data)
+
+   def get_string(self, data):
+      if (data[-1:] != '\0'):
+         data += chr(0)
+      return data
+
+   def get_short(self, data):
+      return self.get_c_type('H', data)
+
+   def get_sshort(self, data):
+      return self.get_c_type('h', data)
+
+   def get_long(self, data):
+      return self.get_c_type('I', data)
+
+   def get_slong(self, data):
+      return self.get_c_type('i', data)
+
+   def get_rational(self, data, type_char="I"):
+      s = ''
+      l = []
+      for pair in data:
+         l.append(pair[0])
+         l.append(pair[1])
+      return self.get_c_type(type_char, l)
+
+   def get_srational(self, data):
+      return self.get_rational(data, "i")
+      
+   def get_float(self, data):
+      return self.get_c_type('f', data)
+
+   def get_double(self, data):
+      return self.get_c_type('d', data)
+
+   def get_undefined(self, data):
+      # Untyped data
+      return data
+
+setattr(DataWriter, "%d" % (TYPE_BYTE, ),      DataWriter.get_byte)
+setattr(DataWriter, "%d" % (TYPE_ASCII, ),     DataWriter.get_string)
+setattr(DataWriter, "%d" % (TYPE_SHORT, ),     DataWriter.get_short)
+setattr(DataWriter, "%d" % (TYPE_LONG, ),      DataWriter.get_long)
+setattr(DataWriter, "%d" % (TYPE_RATIONAL, ),  DataWriter.get_rational)
+setattr(DataWriter, "%d" % (TYPE_SBYTE, ),     DataWriter.get_sbyte)
+setattr(DataWriter, "%d" % (TYPE_UNDEFINED, ), DataWriter.get_undefined)
+setattr(DataWriter, "%d" % (TYPE_SSHORT, ),    DataWriter.get_sshort)
+setattr(DataWriter, "%d" % (TYPE_SLONG, ),     DataWriter.get_slong)
+setattr(DataWriter, "%d" % (TYPE_SRATIONAL, ), DataWriter.get_srational)
+setattr(DataWriter, "%d" % (TYPE_FLOAT, ),     DataWriter.get_float)
+setattr(DataWriter, "%d" % (TYPE_DOUBLE, ),    DataWriter.get_double)
 
 
 class Tag:
@@ -435,6 +502,20 @@ class Tag:
       self.offset = offset
       self.parent = None
       
+   def dataSize(self):
+      unitSize, typeName = TYPES[self.type]
+      return unitSize * len(self.data)
+      
+   def needsDataBlock(self):
+      if len(self.data) > 0 and isinstance(self.data[0], ImageFileDirectory):
+         return True
+      elif self.type == TYPE_ASCII and self.dataSize()+1 > 4:
+         return True
+      elif self.dataSize() > 4:
+         return True
+      else:
+         return False
+         
    def toString(self):
       tagname = ''
       if self.parent:
@@ -460,6 +541,7 @@ class ImageFileDirectory:
       self.tags = []
       self.tags_by_code = {}
       self.ifds = None
+      self.offset = None
 
       self.imageType = None
       self.imageData = None
@@ -482,17 +564,17 @@ class ImageFileDirectory:
          
          tag = fp.read( 12 )
          tagCode, typ, count, rawdata = i16(tag), i16(tag, 2), i32(tag, 4), tag[8:]
-
+         
          unitSize, typeName = TYPES[typ]
          size = count * unitSize
          
          if size <= 4:
                rawdata = rawdata[:size]
          else:
-            curOffset = fp.tell()
+            oldOffset = fp.tell()
             fp.seek( i32(rawdata) )
             rawdata = fp.read( size )
-            fp.seek( curOffset )
+            fp.seek( oldOffset )
             
          if len(rawdata) != size:
             raise IOError, "not enough data"
@@ -542,7 +624,7 @@ class ImageFileDirectory:
             if (len(self.tags_by_code[ TAG_STRIPOFFSETS ].data) != len(self.tags_by_code[ TAG_STRIPBYTECOUNTS ].data)):
                raise SyntaxError, "unmatched image data tags"
             
-            self.imageType="TIFF"
+            self.imageType = "TIFF"
             self.imageData = []
             for i in range(len(self.tags_by_code[ TAG_STRIPOFFSETS ].data)):
                fp.seek( self.tags_by_code[ TAG_STRIPOFFSETS ].data[i] )
@@ -550,16 +632,74 @@ class ImageFileDirectory:
       
       #image data has been read, now return to correct offset before passing the hand back to caller...
       fp.seek( oldOffset )
-
+         
 
    def save(self, fp, em):
+      
       keys = self.tags_by_code.keys()
-      keys.sorted()
+      keys = sorted(keys)
+      
+      # first things first, we save image data, if any
+      if self.imageType == "JPEG":
+         self.tags_by_code[TAG_JPEG_INTERCHANGE_FORMAT].data[0] = fp.tell()
+         fp.write(self.imageData)
+      
+      elif self.imageType == "TIFF":
+         for idx in range(len(self.imageData)):
+            self.tags_by_code[ TAG_STRIPOFFSETS ].data[idx] = fp.tell()
+            fp.write( self.imageData[idx] )
+      
+      #get endian aware writer
+      writer = DataWriter(em)
+      
+      # then we do a first pass at the other tags that needs data blocks
       for k in keys:
-         pass
-      #first pass, save all data that needs to be offseted...
-      #secondpass, save directory itself
-      #success!
+         tag = self.tags_by_code[k]
+         
+         if not TYPES.has_key( tag.type ):
+            raise SyntaxError, "unrecognized type"
+         
+         # if data is larger than 4 bytes, we must write it NOW!
+         # TODO: check tiff docs if any padding is necessary when writing data
+         if tag.needsDataBlock():
+            if isinstance(tag.data[0], ImageFileDirectory):
+               if (len(tag.data) > 1):
+                  offsets = []
+                  for directory in tag.data:
+                     offsets.append( directory.save(fp, em) )
+                  tag.offset = fp.tell()
+                  fp.write( getattr(writer, "%d" % (TYPE_LONG, ))( offsets ) ) # offsets are always unsigned longs
+               else:
+                  tag.offset = tag.data[0].save(fp, em)
+            else:
+               tag.offset = fp.tell()
+               fp.write( getattr(writer, "%d" % (tag.type, ))( tag.data ) )
+               
+            
+      # okay, all directory data has been written, now we right the drectory tags themselves, and we record the current file pointer
+      IFDStartOffset = fp.tell()
+      
+      fp.write( getattr(writer, "%d" % (TYPE_SHORT, ))( [len(self.tags_by_code)] ) )
+            
+      # then we do a second pass for the tags themselves
+      for k in keys:
+         tag = self.tags_by_code[k]
+         fp.write( getattr(writer, "%d" % (TYPE_SHORT, ))( [k, tag.type] ) )
+         fp.write( getattr(writer, "%d" % (TYPE_LONG, ))( [len(tag.data) if tag.type != TYPE_ASCII else len(tag.data) + 1] ) ) # we need to account for the added zero for strings
+         
+         if tag.needsDataBlock():
+            fp.write( getattr(writer, "%d" % (TYPE_LONG, ))( [tag.offset] ) )
+         else:
+            oldOffset = fp.tell()
+            fp.write( getattr(writer, "%d" % (TYPE_LONG, ))( [0] ) )
+            whenDoneOffset = fp.tell()
+            fp.seek(oldOffset)
+            fp.write( getattr(writer, "%d" % (tag.type, ))( tag.data ) )
+            fp.seek(whenDoneOffset)
+      
+      # done, we return the offset where the start of the directory 
+      return IFDStartOffset;
+
 
    def toString(self, level=0):
 
@@ -608,20 +748,21 @@ class TiffImage:
       fp = open(filename, 'r+')
 
       # Header
-      ifh = fp.read(4)
+      self.header = fp.read(4)
       
-      if ifh not in PREFIXES:
+      if self.header not in PREFIXES:
          raise SyntaxError, "not a TIFF file"
 
-      print "Opening %s - byte order header: %s" % (filename, ifh[:2])
+      print "Opening %s - byte order header: %s" % (filename, self.header[:2])
       
-      em = EndianMachine("little" if ifh[:2] == II else "big")
+      self.em = em = EndianMachine("little" if self.header[:2] == II else "big")
 
       # a tiff file always has at least one directory!
       idx = 0
       while True:
          # reads the next ifd offset...
          offset = em.i32( fp.read(4) )
+         # print 'offset', offset
          
          if offset == 0:
             break
@@ -629,7 +770,7 @@ class TiffImage:
          fp.seek( offset )
          ifd = ImageFileDirectory();
          ifd.load(fp, em)
-         self.frames.append(ifd)
+         self.frames.append( ifd )
 
          idx += 1
       
@@ -640,10 +781,22 @@ class TiffImage:
    def save(self, filename):
       "write the tiff structure as a file"
       
-      fp.open(filename, 'w+')
-      # write header
-      # save offset to write start offset
-      # iniate write of ifd0
+      fp = open(filename, 'w+')
+      fp.write(self.header)
+      
+      writer = DataWriter(self.em)
+      
+      for frame in self.frames:
+         curFrameOffset = fp.tell()
+         fp.write( getattr(writer, "%d" % (TYPE_LONG, ))( [0] ) )
+         frameDetailsOffset = frame.save(fp, self.em)
+         nextFrameOffset = fp.tell()
+         fp.seek(curFrameOffset)
+         fp.write(getattr(writer, "%d" % (TYPE_LONG, ))( [frameDetailsOffset] ))
+         fp.seek(nextFrameOffset)
+      
+      # write the final address to indicate that there is nothing left to read
+      fp.write( getattr(writer, "%d" % (TYPE_LONG, ))( [0] ) )
       fp.close
       
    def toString(self):
@@ -654,15 +807,23 @@ class TiffImage:
          s += ifd.toString()
       return s
 
+
 if __name__ == "__main__":
+   
    tiff = TiffImage()
    tiff.load(sys.argv[1])
-   
    print tiff.toString()
+   
+   tiff.save(sys.argv[1] + ".tiff")
+   
+   tiff2 = TiffImage()
+   tiff2.load(sys.argv[1] + ".tiff")
+   print tiff2.toString()
+   
 
    # assume this is a nef file...
-   fp = open("%s.thumb.jpg" % sys.argv[1], 'w')
-   fp.write( tiff.frames[0].ifds[0].imageData )
-   fp.close()
+   # fp = open("%s.thumb.jpg" % sys.argv[1], 'w')
+   # fp.write( tiff.frames[0].ifds[0].imageData )
+   # fp.close()
 
    # now injects jpeg and process data into ifd#0subifd#0
