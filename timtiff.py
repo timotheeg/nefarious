@@ -3,7 +3,7 @@
 # (c)2010 Timothee Groleau
 # with code taken from PIL
 
-import array, string, sys
+import array, string, sys, copy, math, struct
 
 #for debugging!
 from pprint import pprint
@@ -27,20 +27,20 @@ TYPE_SRATIONAL = 10
 TYPE_FLOAT     = 11
 TYPE_DOUBLE    = 12
 
-#for each type, determine the size of the data unit, and a string representation of the type
+#for each type, determine the size of the data unit, the associated python struct letter, and a string representation of the type
 TYPES = {
-   TYPE_BYTE:      (1,   "byte"),
-   TYPE_ASCII:     (1,   "ascii"),
-   TYPE_SHORT:     (2,   "short"),
-   TYPE_LONG:      (4,   "long"),
-   TYPE_RATIONAL:  (2*4, "rational"),
-   TYPE_SBYTE:     (1,   "signed byte"),
-   TYPE_UNDEFINED: (1,   "undefined"),
-   TYPE_SSHORT:    (2,   "signed short"),
-   TYPE_SLONG:     (4,   "signed long"),
-   TYPE_SRATIONAL: (2*4, "signed rational"),
-   TYPE_FLOAT:     (4,   "float"),
-   TYPE_DOUBLE:    (8,   "double")
+   TYPE_BYTE:      (1,   "B",  "byte"),
+   TYPE_ASCII:     (1,   "c",  "ascii"),
+   TYPE_SHORT:     (2,   "H",  "short"),
+   TYPE_LONG:      (4,   "L",  "long"),
+   TYPE_RATIONAL:  (2*4, "LL", "rational"),
+   TYPE_SBYTE:     (1,   "b",  "signed byte"),
+   TYPE_UNDEFINED: (1,   "c",  "undefined"),
+   TYPE_SSHORT:    (2,   "h",  "signed short"),
+   TYPE_SLONG:     (4,   "l",  "signed long"),
+   TYPE_SRATIONAL: (2*4, "ll", "signed rational"),
+   TYPE_FLOAT:     (4,   "f",  "float"),
+   TYPE_DOUBLE:    (8,   "d",  "double")
 }
 
 #known tags
@@ -328,53 +328,36 @@ TAGS = {
 
 class EndianMachine:
 
-   def il16(self, c,o=0):
-      return ord(c[o]) + (ord(c[o+1])<<8)
-   def il32(self, c,o=0):
-      return ord(c[o]) + (ord(c[o+1])<<8) + (ord(c[o+2])<<16) + (ord(c[o+3])<<24)
-   def ol16(self, i):
-      return chr(i&255) + chr(i>>8&255)
-   def ol32(self, i):
-      return chr(i&255) + chr(i>>8&255) + chr(i>>16&255) + chr(i>>24&255)
-
-   def ib16(self, c,o=0):
-      return ord(c[o+1]) + (ord(c[o])<<8)
-   def ib32(self, c,o=0):
-      return ord(c[o+3]) + (ord(c[o+2])<<8) + (ord(c[o+1])<<16) + (ord(c[o])<<24)
-   def ob16(self, i):
-      return chr(i>>8&255) + chr(i&255)
-   def ob32(self, i):
-      return chr(i>>24&255) + chr(i>>16&255) + chr(i>>8&255) + chr(i&255)
+   def getPrefix(self):
+      return "<" if self.mode == "little" else ">"
 
    def isOrder(self, mode):
       return self.mode == mode
 
    def __init__(self, mode=sys.byteorder):
       self.mode = mode
-      
-      if mode == "little":
-         self.i16, self.i32 = self.il16, self.il32
-         self.o16, self.o32 = self.ol16, self.ol32
-      else:
-         self.i16, self.i32 = self.ib16, self.ib32
-         self.o16, self.o32 = self.ob16, self.ob32
 
 
 class DataParser:
    def __init__(self, em):
       self.em = em;
       
-   def load_c_type(self, type_char, data):
-      a = array.array(type_char, data)
-      if not self.em.isOrder(sys.byteorder):
-         a.byteswap()
-      return list(a)
+   def load_type(self, zeType, data):
+      unitSize, strucPattern, typeName = TYPES[zeType]
+      
+      # verify that the data size is sane
+      if len(data) % unitSize != 0:
+         raise RuntimeError("invalid byte count (%d) to read %s of unitsize %d" % (len(data), typeName, unitSize))
+      
+      nUnits = int( len(data) / unitSize )
+      
+      return list( struct.unpack(self.em.getPrefix() + strucPattern * nUnits, data) )
 
    def load_byte(self, data):
-      return self.load_c_type("B", data)
+      return self.load_type(TYPE_BYTE, data)
 
    def load_sbyte(self, data):
-      return self.load_c_type("b", data)
+      return self.load_type(TYPE_SBYTE, data)
 
    def load_string(self, data):
       if data[-1:] == '\0':
@@ -382,32 +365,32 @@ class DataParser:
       return data
 
    def load_short(self, data):
-      return self.load_c_type("H", data)
+      return self.load_type(TYPE_SHORT, data)
 
    def load_sshort(self, data):
-      return self.load_c_type("h", data)
+      return self.load_type(TYPE_SSHORT, data)
 
    def load_long(self, data):
-      return self.load_c_type("I", data)
+      return self.load_type(TYPE_LONG, data)
 
    def load_slong(self, data):
-      return self.load_c_type("i", data)
+      return self.load_type(TYPE_SLONG, data)
 
-   def load_rational(self, data, type_char="I"):
-      a = self.load_c_type(type_char, data)
+   def load_rational(self, data, zeType=TYPE_RATIONAL):
+      a = self.load_type(zeType, data)
       l = []
       for i in range(0, len(a), 2):
          l.append([a[i], a[i+1]])
       return l
 
    def load_srational(self, data):
-      return self.load_rational(data, "i")
+      return self.load_rational(data, TYPE_SRATIONAL)
 
    def load_float(self, data):
-      return self.load_c_type("f", data)
+      return self.load_type(TYPE_FLOAT, data)
 
    def load_double(self, data):
-      return self.load_c_type("d", data)
+      return self.load_type(TYPE_DOUBLE, data)
 
    def load_undefined(self, data):
       # Untyped data
@@ -426,21 +409,21 @@ setattr(DataParser, "%d" % (TYPE_SRATIONAL, ), DataParser.load_srational)
 setattr(DataParser, "%d" % (TYPE_FLOAT, ),     DataParser.load_float)
 setattr(DataParser, "%d" % (TYPE_DOUBLE, ),    DataParser.load_double)
 
+
 class DataWriter:
    def __init__(self, em):
       self.em = em
       
-   def get_c_type(self, type_char, data):
-      a = array.array(type_char, data)
-      if not self.em.isOrder(sys.byteorder):
-         a.byteswap()
-      return a.tostring()
+   def get_type(self, zeType, data):
+      unitSize, strucPattern, typeName = TYPES[zeType]
+
+      return struct.pack(self.em.getPrefix() + strucPattern * len(data), *data)
       
    def get_byte(self, data):
-      return self.get_c_type('B', data)
+      return self.get_type(TYPE_BYTE, data)
 
    def get_sbyte(self, data):
-      return self.get_c_type('b', data)
+      return self.get_type(TYPE_SBYTE, data)
 
    def get_string(self, data):
       if (data[-1:] != '\0'):
@@ -448,33 +431,33 @@ class DataWriter:
       return data
 
    def get_short(self, data):
-      return self.get_c_type('H', data)
+      return self.get_type(TYPE_SHORT, data)
 
    def get_sshort(self, data):
-      return self.get_c_type('h', data)
+      return self.get_type(TYPE_SSHORT, data)
 
    def get_long(self, data):
-      return self.get_c_type('I', data)
+      return self.get_type(TYPE_LONG, data)
 
    def get_slong(self, data):
-      return self.get_c_type('i', data)
+      return self.get_type(TYPE_SLONG, data)
 
-   def get_rational(self, data, type_char="I"):
+   def get_rational(self, data, zeType=TYPE_LONG):
       s = ''
       l = []
       for pair in data:
          l.append(pair[0])
          l.append(pair[1])
-      return self.get_c_type(type_char, l)
+      return self.get_type(zeType, l)
 
    def get_srational(self, data):
-      return self.get_rational(data, "i")
+      return self.get_rational(data, TYPE_SLONG)
       
    def get_float(self, data):
-      return self.get_c_type('f', data)
+      return self.get_type(TYPE_FLOAT, data)
 
    def get_double(self, data):
-      return self.get_c_type('d', data)
+      return self.get_type(TYPE_DOUBLE, data)
 
    def get_undefined(self, data):
       # Untyped data
@@ -503,7 +486,7 @@ class Tag:
       self.parent = None
       
    def dataSize(self):
-      unitSize, typeName = TYPES[self.type]
+      unitSize, structPattern, typeName = TYPES[self.type]
       return unitSize * len(self.data)
       
    def needsDataBlock(self):
@@ -529,7 +512,7 @@ class Tag:
               self.code
             , tagname if tagname else "unknown"
             , self.type
-            , TYPES[self.type][1]
+            , TYPES[self.type][2]
             , len(self.data)
          )
 
@@ -550,37 +533,39 @@ class ImageFileDirectory:
    def load(self, fp, em, level=0):
       "reads an ifd directory, file pointer must already be at the right location!!"
       
-      i16 = em.i16
-      i32 = em.i32
-      
       #instanciate a data parser
       parser = DataParser( em )
       
       # read tag count
-      tagcount = i16( fp.read(2) )
+      tagcount = getattr(parser, "%d" % TYPE_SHORT)( fp.read(2) )[0]
       
       # read all tags
       for i in range(tagcount):
          
-         tag = fp.read( 12 )
-         tagCode, typ, count, rawdata = i16(tag), i16(tag, 2), i32(tag, 4), tag[8:]
+         tagBlock = fp.read(12)
          
-         unitSize, typeName = TYPES[typ]
+         tagCode = getattr(parser, "%d" % TYPE_SHORT)( tagBlock[:2] )[0]
+         zeType  = getattr(parser, "%d" % TYPE_SHORT)( tagBlock[2:4] )[0]
+         count   = getattr(parser, "%d" % TYPE_LONG)( tagBlock[4:8] )[0]
+         rawdata = tagBlock[8:]
+         
+         unitSize, strucPattern, typeName = TYPES[zeType]   
          size = count * unitSize
          
          if size <= 4:
                rawdata = rawdata[:size]
          else:
             oldOffset = fp.tell()
-            fp.seek( i32(rawdata) )
+            nextOffset = getattr(parser, "%d" % TYPE_LONG)( rawdata )[0]
+            fp.seek( nextOffset )
             rawdata = fp.read( size )
             fp.seek( oldOffset )
             
          if len(rawdata) != size:
             raise IOError, "not enough data"
             
-         if TYPES.has_key( typ ):
-            data = getattr(parser, "%d" % (typ, ))( rawdata )
+         if TYPES.has_key( zeType ):
+            data = getattr(parser, "%d" % zeType)( rawdata )
          else:
             data = rawdata
 
@@ -588,7 +573,7 @@ class ImageFileDirectory:
             # read all sub ifds
             oldOffset = fp.tell()
             ifds = []
-            tag = Tag(tagCode, typ, ifds)
+            tag = Tag(tagCode, zeType, ifds)
             for offset in data:
                fp.seek( offset )
                subIfd = ImageFileDirectory(tag)
@@ -597,7 +582,7 @@ class ImageFileDirectory:
             fp.seek(oldOffset)
    
          else:
-            tag = Tag(tagCode, typ, data)
+            tag = Tag(tagCode, zeType, data)
 
          
          if self.parentTag:
@@ -699,7 +684,8 @@ class ImageFileDirectory:
       
       # done, we return the offset where the start of the directory 
       return IFDStartOffset;
-
+      
+      
 
    def toString(self, level=0):
 
@@ -753,15 +739,15 @@ class TiffImage:
       if self.header not in PREFIXES:
          raise SyntaxError, "not a TIFF file"
 
-      print "Opening %s - byte order header: %s" % (filename, self.header[:2])
+      self.em = EndianMachine("little" if self.header[:2] == II else "big")
       
-      self.em = em = EndianMachine("little" if self.header[:2] == II else "big")
+      parser = DataParser( self.em )
 
       # a tiff file always has at least one directory!
       idx = 0
       while True:
          # reads the next ifd offset...
-         offset = em.i32( fp.read(4) )
+         offset = getattr(parser, "%d" % TYPE_LONG)( fp.read(4) )[0]
          # print 'offset', offset
          
          if offset == 0:
@@ -769,7 +755,7 @@ class TiffImage:
 
          fp.seek( offset )
          ifd = ImageFileDirectory();
-         ifd.load(fp, em)
+         ifd.load(fp, self.em)
          self.frames.append( ifd )
 
          idx += 1
@@ -784,7 +770,7 @@ class TiffImage:
       fp = open(filename, 'w+')
       fp.write(self.header)
       
-      writer = DataWriter(self.em)
+      writer = DataWriter( self.em )
       
       for frame in self.frames:
          curFrameOffset = fp.tell()
@@ -812,13 +798,31 @@ if __name__ == "__main__":
    
    tiff = TiffImage()
    tiff.load(sys.argv[1])
-   print tiff.toString()
+
+   if (len(sys.argv) >= 4 and sys.argv[2] == '-r'):
+      
+      if len(tiff.frames[0].ifds) < 3:
+         tiff.frames[0].ifds.append( copy.deepcopy(tiff.frames[0].ifds[0]) )
+      
+      f = open(sys.argv[3])
+      jpeg = f.read()
+      f.close()
+      
+      tiff.frames[0].ifds[0].imageType = "JPEG"
+      tiff.frames[0].ifds[0].imageData = jpeg
+      tiff.frames[0].ifds[0].tags_by_code[TAG_JPEG_INTERCHANGE_FORMAT_LENGTH].data[0] = len(jpeg)
+      
+      tiff.save(sys.argv[4])
+
+   else:
+      print tiff.toString()
+      
+
+   #tiff.save(sys.argv[1] + ".tiff")
    
-   tiff.save(sys.argv[1] + ".tiff")
-   
-   tiff2 = TiffImage()
-   tiff2.load(sys.argv[1] + ".tiff")
-   print tiff2.toString()
+   #tiff2 = TiffImage()
+   #tiff2.load(sys.argv[1] + ".tiff")
+   #print tiff2.toString()
    
 
    # assume this is a nef file...
