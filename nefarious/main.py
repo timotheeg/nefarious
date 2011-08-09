@@ -22,18 +22,18 @@ def main():
     if opts.info:
         print tiff.toString()
     else:
-        if len(tiff.frames[0].ifds) < 3:
-            tiff.frames[0].ifds.append( copy.deepcopy(tiff.frames[0].ifds[0]) )
+        # if len(tiff.frames[0].ifds) < 3:
+        #    tiff.frames[0].ifds.append( copy.deepcopy(tiff.frames[0].ifds[0]) )
             
-            f = open(opts.thumb)
-            jpeg = f.read()
-            f.close()
+        f = open(opts.thumb)
+        jpeg = f.read()
+        f.close()
             
-            tiff.frames[0].ifds[0].imageType = "JPEG"
-            tiff.frames[0].ifds[0].imageData = jpeg
-            tiff.frames[0].ifds[0].tags_by_code[nefarious.constants.TAG_JPEG_INTERCHANGE_FORMAT_LENGTH].data[0] = len(jpeg)
+        tiff.frames[0].ifds[0].imageType = "JPEG"
+        tiff.frames[0].ifds[0].imageData = jpeg
+        tiff.frames[0].ifds[0].tags_by_code[nefarious.constants.TAG_JPEG_INTERCHANGE_FORMAT_LENGTH].data[0] = len(jpeg)
             
-            tiff.save(args[0])
+        tiff.save(opts.input)
     
     
     #tiff.save(sys.argv[1] + ".tiff")

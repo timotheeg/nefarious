@@ -474,7 +474,7 @@ class TiffImage:
       
       # write the final address to indicate that there is nothing left to read
       fp.write( getattr(writer, "%d" % (TYPE_LONG, ))( [0] ) )
-      fp.close
+      fp.close()
       
    def toString(self):
       s = ''

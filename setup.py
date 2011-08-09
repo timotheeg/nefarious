@@ -10,7 +10,7 @@ from setuptools import setup, find_packages
 version = "0.1"
 setup(name='nefarious',
      version=version,
-     description="Nikon NEF File Parser"
+     description="Nikon NEF File Parser",
      long_description="Manipulates your Nikon NEF files to (amongst other things) change the embedded jpeg thumbnail",
      packages=find_packages(exclude=['ez_setup']),
      include_package_data=True,
