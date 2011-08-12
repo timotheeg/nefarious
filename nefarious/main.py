@@ -25,9 +25,9 @@ def confirmSave(tiff, input_file, output_file, force=False):
 
 
 
-def main():   
+def main():
     parser = optparse.OptionParser()
-    
+
     parser.add_option("-i", "--input-file",   dest="input",   help="Specify the input nef file")
     parser.add_option("-o", "--output-file",  dest="output",  help="Specify the file to write to")
     parser.add_option("-p", "--preview-jepg", dest="preview", help="Specify the jpeg file to use as nef preview")
@@ -35,8 +35,8 @@ def main():
 
     parser.usage = "nef-cli -i in.nef [-p preview.jpg] [-o out.nef]"
     opts, _ = parser.parse_args()
-    
-    
+
+
     if not opts.input:
         parser.error("please specify input file with the -i option")
 
@@ -48,11 +48,11 @@ def main():
         # need some smarter logic here and options here...
         # if len(tiff.frames[0].ifds) < 3:
         #    tiff.frames[0].ifds.append( copy.deepcopy(tiff.frames[0].ifds[0]) )
-            
+
         f = open(opts.preview)
         jpeg = f.read()
         f.close()
-            
+
         tiff.frames[0].ifds[0].imageType = "JPEG"
         tiff.frames[0].ifds[0].imageData = jpeg
         tiff.frames[0].ifds[0].tags_by_code[nefarious.constants.TAG_JPEG_INTERCHANGE_FORMAT_LENGTH].data[0] = len(jpeg)
@@ -65,7 +65,7 @@ def main():
 
     elif opts.output:
         return confirmSave(tiff, opts.input, opts.output, opts.yes)
-        
+
     else:
         print tiff.toString()
         return 0
