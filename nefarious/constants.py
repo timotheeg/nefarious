@@ -66,7 +66,7 @@ TAG_EXIFIFD = 34665
 TAG_XMP = 700
 TAG_JPEG_INTERCHANGE_FORMAT = 513
 TAG_JPEG_INTERCHANGE_FORMAT_LENGTH = 514
-TAG_GPS_INFO = 34853;
+TAG_GPS_INFO = 34853
 
 
 TAGS = {
@@ -286,7 +286,6 @@ TAGS = {
     50716: "BlackLevelDeltaV",
     50717: "WhiteLevel",
     50718: "DefaultScale",
-    50741: "BestQualityScale",
     50719: "DefaultCropOrigin",
     50720: "DefaultCropSize",
     50778: "CalibrationIlluminant1",

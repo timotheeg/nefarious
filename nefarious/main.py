@@ -1,12 +1,12 @@
 import optparse
-import copy
+# import copy
 import nefarious
 
 
-def confirmSave(tiff, input, output, force=False):
+def confirmSave(tiff, input_file, output_file, force=False):
 
-    if output != input:
-        tiff.save(output)
+    if output_file != input_file:
+        tiff.save(output_file)
         return 0
 
     else:
@@ -18,7 +18,7 @@ def confirmSave(tiff, input, output, force=False):
             overwrite = raw_input(msg).strip().lower() == 'y'
 
         if overwrite:
-            tiff.save(input)
+            tiff.save(input_file)
             return 0
         else:
             return 1
@@ -34,7 +34,7 @@ def main():
     parser.add_option("-y", "--yes",          dest="yes",     help="Automatically answer yes when prompted to overwrite input", action="store_true", default=False)
 
     parser.usage = "nef-cli -i in.nef [-p preview.jpg] [-o out.nef]"
-    opts, args = parser.parse_args()
+    opts, _ = parser.parse_args()
     
     
     if not opts.input:

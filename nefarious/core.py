@@ -5,13 +5,8 @@ tiff minimalistic parser
 with code taken from PIL
 """
 
-import array
-import string
 import sys
-import copy
-import math
 import struct
-from pprint import pprint
 
 from nefarious.constants import *
 
@@ -31,7 +26,7 @@ class EndianMachine:
 
 class DataParser:
    def __init__(self, em):
-      self.em = em;
+      self.em = em
       
    def load_type(self, zeType, data):
       unitSize, strucPattern, typeName = TYPES[zeType]
@@ -106,7 +101,7 @@ class DataWriter:
       self.em = em
       
    def get_type(self, zeType, data):
-      unitSize, strucPattern, typeName = TYPES[zeType]
+      _, strucPattern, _ = TYPES[zeType]
 
       return struct.pack(self.em.getPrefix() + strucPattern * len(data), *data)
       
@@ -134,7 +129,6 @@ class DataWriter:
       return self.get_type(TYPE_SLONG, data)
 
    def get_rational(self, data, zeType=TYPE_LONG):
-      s = ''
       l = []
       for pair in data:
          l.append(pair[0])
@@ -177,10 +171,11 @@ class Tag:
       self.parent = None
       
    def dataSize(self):
-      unitSize, structPattern, typeName = TYPES[self.type]
+      unitSize, _, _ = TYPES[self.type]
       return unitSize * len(self.data)
       
    def needsDataBlock(self):
+      """determines whether a block to hold the tag data must be allocated (data size > 4 bytes)""" 
       if len(self.data) > 0 and isinstance(self.data[0], ImageFileDirectory):
          return True
       elif self.type == TYPE_ASCII and self.dataSize()+1 > 4:
@@ -222,7 +217,7 @@ class ImageFileDirectory:
 
       
    def load(self, fp, em, level=0):
-      "reads an ifd directory, file pointer must already be at the right location!!"
+      """reads an ifd directory, file pointer must already be at the right location!!"""
       
       #instanciate a data parser
       parser = DataParser( em )
@@ -240,7 +235,7 @@ class ImageFileDirectory:
          count   = getattr(parser, "%d" % TYPE_LONG)( tagBlock[4:8] )[0]
          rawdata = tagBlock[8:]
          
-         unitSize, strucPattern, typeName = TYPES[zeType]   
+         unitSize, _, _ = TYPES[zeType]
          size = count * unitSize
          
          if size <= 4:
@@ -306,7 +301,7 @@ class ImageFileDirectory:
                fp.seek( self.tags_by_code[ TAG_STRIPOFFSETS ].data[i] )
                self.imageData.append( fp.read( self.tags_by_code[ TAG_STRIPBYTECOUNTS ].data[i] ) )
       
-      #image data has been read, now return to correct offset before passing the hand back to caller...
+      # image data has been read, now return to correct offset before passing the hand back to caller...
       fp.seek( oldOffset )
          
 
@@ -325,7 +320,7 @@ class ImageFileDirectory:
             self.tags_by_code[ TAG_STRIPOFFSETS ].data[idx] = fp.tell()
             fp.write( self.imageData[idx] )
       
-      #get endian aware writer
+      # get endian aware writer
       writer = DataWriter(em)
       
       # then we do a first pass at the other tags that needs data blocks
@@ -340,6 +335,8 @@ class ImageFileDirectory:
          if tag.needsDataBlock():
             if isinstance(tag.data[0], ImageFileDirectory):
                if (len(tag.data) > 1):
+                  # there is more than one directory, that means the tag data will be a list of offsets to each directory
+                  # we must save all directories to get their file offsets, and then write all the offsets to get the tag data offset
                   offsets = []
                   for directory in tag.data:
                      offsets.append( directory.save(fp, em) )
@@ -373,8 +370,8 @@ class ImageFileDirectory:
             fp.write( getattr(writer, "%d" % (tag.type, ))( tag.data ) )
             fp.seek(whenDoneOffset)
       
-      # done, we return the offset where the start of the directory 
-      return IFDStartOffset;
+      # done, we return the offset where the start of the directory is 
+      return IFDStartOffset
       
       
 
@@ -382,7 +379,7 @@ class ImageFileDirectory:
 
       identation = '' if level <= 0 else '  '*level
       
-      s = '';
+      s = ''
       
       s += '%sTAG COUNT: %d\n' % (identation, len(self.tags_by_code))
       
@@ -409,7 +406,7 @@ class ImageFileDirectory:
          else:
             s += '\n'
          
-      return s;
+      return s
          
 
 class TiffImage:
@@ -418,9 +415,10 @@ class TiffImage:
    
    def __init__(self):
       self.frames = []
+      self.header = None
       
    def load(self, filename):
-      "Open a TIFF file and import its structure"
+      """Open a TIFF file and import its structure"""
       
       fp = open(filename, 'r+')
 
@@ -435,7 +433,6 @@ class TiffImage:
       parser = DataParser( self.em )
 
       # a tiff file always has at least one directory!
-      idx = 0
       while True:
          # reads the next ifd offset...
          offset = getattr(parser, "%d" % TYPE_LONG)( fp.read(4) )[0]
@@ -445,18 +442,16 @@ class TiffImage:
             break
 
          fp.seek( offset )
-         ifd = ImageFileDirectory();
+         ifd = ImageFileDirectory()
          ifd.load(fp, self.em)
          self.frames.append( ifd )
-
-         idx += 1
       
       fp.close()
       
       # done, we have a tif structure :)
       
    def save(self, filename):
-      "write the tiff structure as a file"
+      """write the tiff structure as a file"""
       
       fp = open(filename, 'w+')
       fp.write(self.header)
