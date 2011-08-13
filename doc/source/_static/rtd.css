@@ -37,6 +37,10 @@ body {
     margin: 0;
 }
 
+dt {
+	font-weight: bold;
+}
+
 div.document {
     text-align: left;
     background-color: #e8ecef;

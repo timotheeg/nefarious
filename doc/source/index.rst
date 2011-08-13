@@ -2,7 +2,7 @@
 
 Nefarious : Nikon NEF File Parser
 =================================
-Manipulates your Nikon NEF files to (amongst other things) change the embedded jpeg thumbnail
+nefarious let's you edit your nikon raw nef files to store your processed images inside the nef files themselves
 
 Source: `GitHub Repository`_
 
@@ -12,6 +12,7 @@ Source: `GitHub Repository`_
    what
    why
    who
+   where
+   how
    faq
-
-
+   acknowledgments
