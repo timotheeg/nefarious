@@ -15,7 +15,7 @@ For now, basically for using nefarious as a lib, I recommend reading the code it
 For using the cli tool, below are some examples. Assume that
 
 -  **input.nef** is the input nef file you want to manipulate
--  **processed.jpeg** is the developed and processed jpeg you want to inject i nyour nef to replace the dumb preview jpeg.
+-  **processed.jpeg** is the developed and processed jpeg you want to inject in your nef to replace the dumb preview jpeg.
 
 Note: as a prerequisite for replacing the preview jpeg with another file, that file should have all metadata stripped. That can be achieved easily with the jpegtran utility from libjpeg_.
 
@@ -31,7 +31,7 @@ Will print the nef structure
 
     $ nef-cli -i input.nef -o out.nef
     
-Will parse the input nef, and just save it again with its own tiff save algorithm, with no data modification. The command basically lets you test if out.nef is still usable in your favorite nef reader (basically the data should be identical amd no nef reader should be able to tell the difference)
+Will parse the input nef, and just save it again with its own tiff save algorithm, with no data modification. The command basically lets you test if out.nef is still usable in your favorite nef reader (basically the data should be identical and no nef reader should be able to tell the difference)
 Note that while the data and nef structure is identical, the file byte layout is NOT. nefarious does not necessarily save tags and directories in the same file location as the original nef, but that should be of no consequence for a nef reader.
 
 ::

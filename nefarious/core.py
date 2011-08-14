@@ -221,6 +221,9 @@ class ImageFileDirectory:
 
         #instanciate a data parser
         parser = DataParser( em )
+        
+        dir_offset = fp.tell();
+        # print "x%08x" % (dir_offset, )
 
         # read tag count
         tagcount = getattr(parser, "%d" % TYPE_SHORT)( fp.read(2) )[0]
@@ -228,13 +231,14 @@ class ImageFileDirectory:
         # read all tags
         for i in range(tagcount):
 
+            tagPos = fp.tell()
             tagBlock = fp.read(12)
 
             tagCode = getattr(parser, "%d" % TYPE_SHORT)( tagBlock[:2] )[0]
             zeType  = getattr(parser, "%d" % TYPE_SHORT)( tagBlock[2:4] )[0]
             count   = getattr(parser, "%d" % TYPE_LONG)( tagBlock[4:8] )[0]
             rawdata = tagBlock[8:]
-
+            
             unitSize, _, _ = TYPES[zeType]
             size = count * unitSize
 
@@ -276,6 +280,12 @@ class ImageFileDirectory:
 
             self.tags.append( tag )
             self.tags_by_code[ tagCode ] = tag
+            
+            # s = ("  "*level) + ("x%08x -> x%08x " % (tagPos, tagPos+12)) + tag.toString()
+            # if tag.type in [TYPE_ASCII, TYPE_RATIONAL, TYPE_SHORT, TYPE_LONG]:
+            #     s += ": %s" % (str(tag.data) if len(tag.data) > 1 else str(tag.data[0]))
+            # print s
+
 
         # all tags have been read, next long is the next ifd offset that will be read used by the CALLER
         # hence, save current offset before fetching image data
