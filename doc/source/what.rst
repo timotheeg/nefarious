@@ -1,6 +1,6 @@
 what?
 -----
-nefarious is a python library and utility that lets you manipulate parts of a Nikon NEF file WITHOUT altering the sensor data.
+nefarious is a python library and utility that lets you manipulate parts of a Nikon NEF file **without** altering the sensor data.
 
 In particular, nefarious allows you to replace the embedded jpeg image preview (typically a full-size, but low-quality, jpeg), by any other replacement image of your choice.
 

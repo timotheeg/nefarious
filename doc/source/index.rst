@@ -16,3 +16,4 @@ Source: `GitHub Repository`_
    how
    faq
    acknowledgments
+   samples
