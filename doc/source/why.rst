@@ -2,7 +2,7 @@ why?
 ----
 .. _KPhotoAlbum: http://www.kphotoalbum.org/
 
-I've looked at several sofftware for image management (and I do NOT mean image retouching). I've settled some years back on KPhotoAlbum_ and I have invested a significant of time with it in filesystem arrangement and photo tagging.
+I've looked at several software for image management (and I do not mean image retouching). I've settled some years back on KPhotoAlbum_ and I have invested a significant of time with it in filesystem arrangement and photo tagging.
 
 Still, I'm rather old school in trusting only myself as far as 1) backups and 2) knowledge of my pics are concerned. I don't want to rely on any software to know that a nef and a same-named jpeg in some other folder are the actual same image. In the end, there are 2 files (or more) on the file system. To view, I want to see the jpeg, processed version. To edit, I want to start from the raw sensor data. How can I manage that?
 
@@ -25,6 +25,6 @@ Lots of procrastination, and some work later, nefarious was finaly born.
 
 I'm only started to use it myself for my own use, but I'd figured I'd release it open source in case it might help someone else.
 
-For now, I'm pretty happy with my setup: in KPhotoalbum, thumbnails and full size view are now displaying the processed jpeg. All the kipi plugin that publish pics to various online services (picasa, facebook) do the same. When I right click on a pic and select "open with rawtherapee", it opens rawtherapee nicely, and since rawtherapee stored the processing parametersnext to the nef, rawtherappe already loads whetever settings I had from my .previous session. If I need to print, I select the pics I want and use dcraw to extract the embedded jpeg.
+For now, I'm pretty happy with my setup: in KPhotoalbum, thumbnails and full size view are now displaying the processed jpeg. All the kipi plugin that publish pics to various online services (picasa, facebook) do the same. When I right click on a pic and select "open with rawtherapee", it opens rawtherapee nicely, and since rawtherapee stored the processing parameters next to the nef, rawtherappe already loads whetever settings I had from my .previous session. If I need to print, I select the pics I want and use dcraw to extract the embedded jpeg.
 
-What is still needed are a few scripts to automatically merge my RAW+FINE pics into one nef right away (I'm working on that); and possibly some automated way to handle editing and saving to automatically replace the jpeg everytime. At the moment, After I edit in rawtherapee, I use nefarious manualy to inject the processed jpeg into the nef again. That's not hard, but less than ideal.
+What is still needed are a few scripts to automatically merge my RAW+FINE pics into one nef right away (I'm working on that); and possibly some automated way to handle editing and saving to automatically replace the jpeg every time. At the moment, After I edit in rawtherapee, I use nefarious manually to inject the processed jpeg into the nef again. That's not hard, but less than ideal.

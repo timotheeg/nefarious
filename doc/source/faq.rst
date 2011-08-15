@@ -10,9 +10,9 @@ FAQ
 Wait... did you say you were manipulating raw files? That's the greatest sin of digital photography!!!! Haven't you read the memo? NO program should ever touch a raw file!! You should rot in hell, along with all your descendants for 10 generations.
     yes. yes. thank you.
 
-    Raw NEF files follow the `tiff file format specifications`_, which means they're reasonnably easy to parse and understand. A NEF file basically consists of a bunch of tags and directories, themselves containing more tags and data. What is really precious in that NEF file is the sensor data, which sits in one of the directory. nefarious doesn't alter that in any way.
+    Raw NEF files follow the `tiff file format specifications`_, which means they're reasonably easy to parse and understand. A NEF file basically consists of a bunch of tags and directories, themselves containing more tags and data. What is really precious in that NEF file is the camera's sensor data, which sits in one of the directory. nefarious doesn't alter that in any way.
 
-    Anything else is fair game: change the date, change/add gps location, **update the preview jpeg**, whatever. The aim of nefarious is to spit out nef files in such a way that no nef reader (e.g. dcraw_), and hopefully not even a nef reader from Nikon itself, would realize the nef was not straight out of a Nikon camera. Of course the ability to actually use the sensor data for developpment in a raw editor like rawtherapee_ is fully retained.
+    Anything else is fair game: change the date, change/add gps location, **update the preview jpeg**, whatever. The aim of nefarious is to spit out nef files in such a way that no nef reader (e.g. dcraw_), and hopefully not even a nef reader from Nikon itself, would realize the nef was not straight out of a Nikon camera. Of course the ability to actually use the sensor data for development in a raw editor like rawtherapee_ is fully retained.
 
     Just to be clear though, this program comes with *no warranty whatsoever*. If you are religious about your raw nef files, do NOT use this program, it might just give you an ulcer. And please, do not send me any message either to tell me how horrible nefarious is... If you don't like it, just move on and forget about it.
 
@@ -28,7 +28,7 @@ Why the name "nefarious"?
     "nefarious" means nasty, and many people think touching raw files is just that. Additionally, we are manipulating nef files here, and well, there is only one word in the oxford dictionary that starts with "nef", and that's "nefarious" :).
 
 What can nefarious do?
-    nefarious is basically a python lib, that allows you to manipulate tiff tags and tiff structure, for example adding a new subdirectory to store additional images or data is possible, modifying the comments, adding your own custom fields in the file, or replacing the jpeg preview image.
+    nefarious is basically a python lib, that allows you to manipulate tiff tags and tiff structure. For example adding a new subdirectory to store additional images or data is possible, modifying the comments, adding your own custom fields in the file, or replacing the jpeg preview image.
 
     nefarious also has a simple cli tool that can do 2 things: 1) print the structure of a given nef; and 2) replace the preview jpeg by another jpg (jpg should have been jpegtran-ed first).
 
@@ -48,7 +48,7 @@ Which nef format/version does nefarious support?
     nefarious has successfully read and rewritten nefs from my ex-D60 as well, but I haven't attempted to set the jpeg preview for D60 pics (yet).
 
 why are nefarious written nef files smaller than the original nefs?
-    Very observant! so I guess you've noticed in plain read-and-write-again, around 100 bytes are missing from the written files... Did nefarious erase something? Actually, I'm not sure myself. I assume this is because the nef file from Nikon must be storing a few extra bytes for padding here and there when writing. nefarious writes the absolute mininum with no consideration for padding. and so saves these few bytes.
+    Very observant! so I guess you've noticed in plain read-and-write-again, around 100 bytes are missing from the written files... Did nefarious erase something? Actually, I'm not sure myself. I assume this is because the nef file from Nikon must be storing a few extra bytes for padding here and there when writing. nefarious writes the absolute minimum with no consideration for padding. and so saves these few bytes.
 
     I must admit this has bothered me, especially since I haven't managed to find these extra bytes in some samples nefs (it's not easy to find a 100 bytes in a 15MB file). I have somewhat put my worries to rest after:
 

@@ -39,7 +39,7 @@ Note that while the data and nef structure is identical, the file byte layout is
     $ jpegtran -optimize -copy none -outfile processed.stripped.jpg processed.jpeg
     $ nef-cli -i input.nef -p processed.stripped.jpg -o out.nef
     
-The jpegtran command above prepares the jpeg file by stripping it of any unecessary metadata
+The jpegtran command above prepares the jpeg file by stripping it of any unnecessary metadata
 The second command uses the stripped jpeg to replace the preview jpeg of the input nef, and save the resulting nef in out.nef
 
 ::
