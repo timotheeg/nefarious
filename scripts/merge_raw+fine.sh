@@ -53,7 +53,7 @@ do
 	# find a potential nef file to process in a case insensitive way
 	target_nef=$(find "$raw_dir$path_to_nef/" -maxdepth 1 -iname "$name_of_nef.nef" 2>/dev/null)
 	
-	if [[ ! -z "$target_nef" && "$(echo $target_nef | wc -l)" -eq 1 ]];
+	if [[ -n "$target_nef" && "$(echo $target_nef | wc -l)" -eq 1 ]];
 	then
 		if [ -w "$target_nef" ];
 		then
